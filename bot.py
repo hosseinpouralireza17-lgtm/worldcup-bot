@@ -665,6 +665,17 @@ async def admin(m: types.Message):
 
     await m.answer(text)    
 
+# ================= RECALCULATE =================
+@dp.message(Command("recalculate"))
+async def recalculate(m: types.Message):
+
+    if m.from_user.id != ADMIN_ID:
+        return await m.answer("⛔ دسترسی نداری")
+
+    update_scores()
+
+    await m.answer("✅ امتیاز همه کاربران دوباره محاسبه شد")    
+
 # ================= REFRESH SCORES =================
 @dp.message(Command("refresh"))
 async def refresh_scores(m: types.Message):
