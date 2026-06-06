@@ -79,7 +79,7 @@ GROUPS = {
 "G": ["Belgium", "Egypt", "Iran", "New Zealand"],
 "H": ["Cape Verde", "Saudi Arabia", "Spain", "Uruguay"],
 "I": ["France", "Iraq", "Norway", "Senegal"],
-"J": ["Algeria", "Argentina", "Austia", "Jordan"],
+"J": ["Algeria", "Argentina", "Austria", "Jordan"],
 "K": ["Colombia", "DR Congo", "Portugal", "Uzbekistan"],
 "L": ["Croatia", "England", "Ghana", "Panama"],
 }
@@ -172,6 +172,7 @@ def update_scores():
         total = 0
 
         # ================= GROUP STAGE =================
+       # ================= GROUP STAGE =================
         cursor.execute("""
         SELECT group_id, position, team
         FROM group_preds
@@ -180,17 +181,48 @@ def update_scores():
 
         preds = cursor.fetchall()
 
+        # تیم‌های سومی که واقعاً صعود کرده‌اند
+        real_best_thirds = set(KNOCKOUT_RESULTS["team"].tolist())
+
+        # تیم‌های سومی که کاربر به عنوان صعودکننده انتخاب کرده
+        cursor.execute("""
+        SELECT team
+        FROM knockout_preds
+        WHERE user_id = ?
+        """, (uid,))
+        user_best_thirds = set(row[0] for row in cursor.fetchall())
+
         for group_id, position, team in preds:
 
-            match = GROUP_RESULTS[
-                (GROUP_RESULTS["group"] == group_id) &
-                (GROUP_RESULTS["team"] == team) &
-                (GROUP_RESULTS["position"] == position)
+            real_row = GROUP_RESULTS[
+               (GROUP_RESULTS["group"] == group_id) &
+               (GROUP_RESULTS["team"] == team)
             ]
 
-            if not match.empty:
+            if real_row.empty:
+                continue
+
+            real_pos = int(real_row.iloc[0]["position"])
+
+            # آیا واقعاً صعود کرده؟
+            real_qualified = (
+                real_pos in [1, 2]
+                or team in real_best_thirds
+            )
+
+            # آیا کاربر صعودش را پیش‌بینی کرده؟
+            predicted_qualified = (
+                position in [1, 2]
+                or team in user_best_thirds
+            )
+
+            # جایگاه دقیق
+            if real_pos == position:
                 total += 5
 
+            # فقط صعود درست بوده
+            elif real_qualified and predicted_qualified:
+                total += 3
         # ================= KNOCKOUT =================
         cursor.execute("""
         SELECT team FROM knockout_preds
