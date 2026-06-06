@@ -163,7 +163,7 @@ def update_scores():
         "worldcup_predictions.xlsx",
         sheet_name="CHAMPION"
     )
-    print("EXCEL UPDATED")
+   
     cursor.execute("SELECT user_id FROM users")
     users = cursor.fetchall()
 
