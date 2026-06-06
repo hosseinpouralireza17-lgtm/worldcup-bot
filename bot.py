@@ -163,7 +163,7 @@ def update_scores():
         "worldcup_predictions.xlsx",
         sheet_name="CHAMPION"
     )
-
+    print("EXCEL UPDATED")
     cursor.execute("SELECT user_id FROM users")
     users = cursor.fetchall()
 
@@ -664,17 +664,7 @@ async def admin(m: types.Message):
         text += f"{i}. {name} ({uname}) — {score} امتیاز\n"
 
     await m.answer(text)    
-
-# ================= RECALCULATE =================
-@dp.message(Command("recalculate"))
-async def recalculate(m: types.Message):
-
-    if m.from_user.id != ADMIN_ID:
-        return await m.answer("⛔ دسترسی نداری")
-
-    update_scores()
-
-    await m.answer("✅ امتیاز همه کاربران دوباره محاسبه شد")    
+   
 
 # ================= REFRESH SCORES =================
 @dp.message(Command("refresh"))
