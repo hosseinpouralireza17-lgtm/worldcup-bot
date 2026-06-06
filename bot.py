@@ -675,7 +675,14 @@ async def refresh_scores(m: types.Message):
 
     update_scores()
 
-    await m.answer("✅ امتیازها از اکسل دوباره محاسبه شد")    
+    rows = pd.read_excel(
+        "worldcup_predictions.xlsx",
+        sheet_name="CHAMPION"
+    )
+
+    await m.answer(
+        f"✅ اکسل خوانده شد\n\n{rows.head().to_string()}"
+    )  
 
 # ================= RUN =================
 async def main():
