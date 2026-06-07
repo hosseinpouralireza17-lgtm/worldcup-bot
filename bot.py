@@ -673,6 +673,7 @@ async def refresh_scores(m: types.Message):
         # 1) force reload excel
         load_excel_if_changed()
 
+        print("LOADING EXCEL")
         # 2) recalculate scores
         update_scores()
 
