@@ -3,6 +3,31 @@ import sqlite3
 from datetime import datetime
 import pandas as pd
 
+import os
+
+EXCEL_FILE = "worldcup_predictions.xlsx"
+
+last_mtime = 0
+
+GROUP_RESULTS = None
+KNOCKOUT_RESULTS = None
+CHAMPION_RESULT = None
+
+
+def load_excel_if_changed():
+    global last_mtime, GROUP_RESULTS, KNOCKOUT_RESULTS, CHAMPION_RESULT
+
+    mtime = os.path.getmtime(EXCEL_FILE)
+
+    if mtime != last_mtime:
+        last_mtime = mtime
+
+        GROUP_RESULTS = pd.read_excel(EXCEL_FILE, sheet_name="GROUP_STAGE")
+        KNOCKOUT_RESULTS = pd.read_excel(EXCEL_FILE, sheet_name="KNOCKOUT")
+        CHAMPION_RESULT = pd.read_excel(EXCEL_FILE, sheet_name="CHAMPION")
+
+        print("📊 Excel reloaded")
+
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
 from aiogram.types import (
@@ -51,22 +76,6 @@ score INTEGER DEFAULT 0
 conn.commit()
 
 #=================== Exel =================
-# ================= EXCEL FILE =================
-
-GROUP_RESULTS = pd.read_excel(
-    "worldcup_predictions.xlsx",
-    sheet_name="GROUP_STAGE"
-)
-
-KNOCKOUT_RESULTS = pd.read_excel(
-    "worldcup_predictions.xlsx",
-    sheet_name="KNOCKOUT"
-)
-
-CHAMPION_RESULT = pd.read_excel(
-    "worldcup_predictions.xlsx",
-    sheet_name="CHAMPION"
-)
 
 # ================= GROUPS =================
 GROUPS = {
@@ -148,21 +157,8 @@ def save_user(user):
 # ================= SCORE =================
 def update_scores():
 
-    # ================= READ EXCEL =================
-    GROUP_RESULTS = pd.read_excel(
-        "worldcup_predictions.xlsx",
-        sheet_name="GROUP_STAGE"
-    )
+    load_excel_if_changed()
 
-    KNOCKOUT_RESULTS = pd.read_excel(
-        "worldcup_predictions.xlsx",
-        sheet_name="KNOCKOUT"
-    )
-
-    CHAMPION_RESULT = pd.read_excel(
-        "worldcup_predictions.xlsx",
-        sheet_name="CHAMPION"
-    )
    
     cursor.execute("SELECT user_id FROM users")
     users = cursor.fetchall()
@@ -673,19 +669,38 @@ async def refresh_scores(m: types.Message):
     if m.from_user.id != ADMIN_ID:
         return await m.answer("⛔ دسترسی نداری")
 
-    update_scores()
+    try:
+        # 1) force reload excel
+        load_excel_if_changed()
 
-    rows = pd.read_excel(
-        "worldcup_predictions.xlsx",
-        sheet_name="CHAMPION"
-    )
+        # 2) recalculate scores
+        update_scores()
 
-    await m.answer(
-        f"✅ اکسل خوانده شد\n\n{rows.head().to_string()}"
-    )  
+        # 3) summary از اکسل (چک سریع)
+        df = pd.read_excel("worldcup_predictions.xlsx", sheet_name="CHAMPION")
+
+        await m.answer(
+            "♻️ آپدیت موفق انجام شد\n\n"
+            f"👑 نمونه داده شیت قهرمان:\n{df.head().to_string(index=False)}"
+        )
+
+    except Exception as e:
+        await m.answer(f"❌ خطا در آپدیت:\n{str(e)}")
+    await m.answer(f"📂 CHAMPION sample:\n{df.head().to_string(index=False)}")
+
+
+async def auto_score_loop():
+    while True:
+        try:
+            update_scores()
+        except Exception as e:
+            print("score update error:", e)
+
+        await asyncio.sleep(30)  # هر 30 ثانیه
 
 # ================= RUN =================
 async def main():
+    asyncio.create_task(auto_score_loop())
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
