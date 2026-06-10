@@ -34,14 +34,16 @@ from aiogram.types import (
     InlineKeyboardMarkup, InlineKeyboardButton,
     ReplyKeyboardMarkup, KeyboardButton
 )
-
+#import os
+#TOKEN = os.getenv("8675118804:AAFrV0th6Y2z-JHw02C1GNO27dbfx_cKQnQ")
 TOKEN = "8675118804:AAFrV0th6Y2z-JHw02C1GNO27dbfx_cKQnQ"
 ADMIN_ID = 232481679
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
-conn = sqlite3.connect("telegram.db")
+DB_PATH = os.path.join(os.getcwd(), "telegram.db")
+conn = sqlite3.connect(DB_PATH, check_same_thread=False)
 cursor = conn.cursor()
 
 # ================= DB =================
@@ -94,8 +96,24 @@ GROUPS = {
 }
 
 GROUP_ORDER = list(GROUPS.keys())
+import json
+import os
+
+STATE_FILE = "user_state.json"
+
 user_state = {}
 
+def save_state():
+    with open(STATE_FILE, "w") as f:
+        json.dump(user_state, f)
+
+def load_state():
+    global user_state
+    try:
+        with open(STATE_FILE, "r") as f:
+            user_state = json.load(f)
+    except:
+        user_state = {}
 # ================= START TEXT =================
 START_TEXT = """
 🤖 گروه هوش مصنوعی CAST تقدیم می‌کند:
@@ -315,6 +333,7 @@ async def dashboard(user_id: int, message):
 async def start(m: types.Message):
 
     save_user(m.from_user)
+    load_state()
 
     user_state[m.from_user.id] = {
         "group_index": 0,
@@ -362,6 +381,7 @@ async def cb(c: types.CallbackQuery):
             return
 
         state["picked"].append(t)
+        save_state()
 
         await c.message.answer(
             f"""
@@ -392,6 +412,7 @@ async def cb(c: types.CallbackQuery):
     elif data == "reset_group":
 
         state["picked"] = []
+        save_state()
 
         current_group = GROUP_ORDER[state["group_index"]]
 
@@ -483,6 +504,7 @@ async def cb(c: types.CallbackQuery):
             return
 
         state["knockout"].append(t)
+        save_state()
 
         await c.message.answer(
             f"""
@@ -540,6 +562,7 @@ async def cb(c: types.CallbackQuery):
         t = data[2:]
 
         state["champion"] = t
+        save_state()
 
         cursor.execute("""
         INSERT OR REPLACE INTO champion_pred
@@ -701,6 +724,8 @@ async def auto_score_loop():
 
 # ================= RUN =================
 async def main():
+    load_state()
+    await dp.start_polling(bot)
     asyncio.create_task(auto_score_loop())
     await dp.start_polling(bot)
 
